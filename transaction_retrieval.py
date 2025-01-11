@@ -55,13 +55,14 @@ async def fetch_transactions(session, tick, address, multiple=''):
             nonlocal total_transactions
             prev_transactions = 0
             print ("\n\n\n")
+            display_interval = 2
             while True:
-                await asyncio.sleep(1)
+                await asyncio.sleep(display_interval)
                 current_transactions = total_transactions
                 transactions_per_second = current_transactions - prev_transactions
                 total_time = time.time() - start_time
                 average_speed = total_transactions / total_time
-                print(f"\033[F\033[F\033[F\rCurrent processing speed (transactions / sec): {transactions_per_second:.2f} | Average processing speed (transactions / sec): {average_speed:.2f}\nTotal transactions processed: {total_transactions}\nPress CTRL+C and check your network connectivity if 'Total transactions processed' does not increase for more than 20 seconds.")
+                print(f"\033[F\033[F\033[F\rCurrent processing speed (transactions / sec): {(transactions_per_second/display_interval):.2f} | Average processing speed (transactions / sec): {average_speed:.2f}\nTotal transactions processed: {total_transactions}\nPress CTRL+C and check your network connectivity if 'Total transactions processed' does not increase for more than 20 seconds.")
                 prev_transactions = current_transactions
 
         asyncio.create_task(processing_speed_indicator())
@@ -71,7 +72,7 @@ async def fetch_transactions(session, tick, address, multiple=''):
             if response.status != 200:
                 raise Exception(f"API error with status code {response.status}")
             try:
-                async with asyncio.timeout(0.95):
+                async with asyncio.timeout(1):
                     data = await response.json()
             except TimeoutError:
                 raise Exception(f"Data retrieval timeout")
@@ -92,7 +93,7 @@ async def fetch_transactions(session, tick, address, multiple=''):
 
 # Async function to handle retries
 async def retrieve_transactions(address, tick=''):
-    retries = 10
+    retries = 5
     async with aiohttp.ClientSession() as session:
         for attempt in range(retries):
             try:
@@ -100,13 +101,13 @@ async def retrieve_transactions(address, tick=''):
                 break
             except Exception as e:
                 print(f"Error: {e}. Retrying... ({attempt + 1}/{retries})\n\n\n\n")
-                await asyncio.sleep(1)
+                await asyncio.sleep(0.4)
         else:
-            print("Failed after 10 retries. Returning to main menu.")
+            print("Failed after 5 retries. Returning to main menu.")
 
 # Async function to retrieve all transactions for a ticker
 async def retrieve_all_transactions(tick, address=''):
-    retries = 10
+    retries = 5
     async with aiohttp.ClientSession() as session:
         for attempt in range(retries):
             try:
@@ -114,9 +115,9 @@ async def retrieve_all_transactions(tick, address=''):
                 break
             except Exception as e:
                 print(f"Error: {e}. Retrying... ({attempt + 1}/{retries})\n\n\n\n")
-                await asyncio.sleep(1)
+                await asyncio.sleep(0.4)
         else:
-            print("\nFailed after 10 retries. Returning to main menu.")
+            print("\nFailed after 5 retries. Returning to main menu.")
 
 # Async function to retrieve transactions from a file of addresses
 async def retrieve_transactions_from_file(filename, tick):
@@ -134,7 +135,7 @@ async def retrieve_transactions_from_file(filename, tick):
         await asyncio.gather(*tasks)
         processed_addresses += len(batch)
 
-    retries = 10
+    retries = 5
     async with aiohttp.ClientSession() as session:
         for attempt in range(retries):
             try:
@@ -144,8 +145,8 @@ async def retrieve_transactions_from_file(filename, tick):
                 break
             except Exception as e:
                 print(f"\nError: {e}. Retrying... ({attempt + 1}/{retries})")
-                await asyncio.sleep(0.2)
+                await asyncio.sleep(0.4)
         else:
-            print("Failed after 10 retries. Returning to main menu.")
+            print("Failed after 5 retries. Returning to main menu.")
     
     print(f"\rProcessed wallets: {processed_addresses} / {total_addresses}")
