@@ -5,7 +5,7 @@
 ## Description
 A simple command-line tool to retrieve and analyze transactions involving KRC20 tokens.
 
-## Features
+## Functions
 ### TRANSACTIONS RETRIEVAL
 SINGLE TICKER
 - Retrieve transactions file for a wallet and a KRC20 ticker
@@ -22,6 +22,18 @@ SINGLE TICKER
 - Compute balance SNAPSHOT file at a specific opscore for a KRC20 ticker from a full transactions file")
 <!-- -->
 
+## Further Highlights:
+
+### Robust
+
+- Designed to handle network disconnections and malformed server responses, ensuring reliable performance.
+
+### Insightful
+- Wallet history
+- Token distribution
+- Variations over time
+- Further analytics you might not even have thought of yet!
+
 ## Author
 This software is brought to you by **on3ir0s** and the **Kastor´s $FOREST** team. \
 Visit [Kastor´s $FOREST profile on X](https://x.com/KastorsForest) and discover our world! 
@@ -30,11 +42,11 @@ Visit [Kastor´s $FOREST profile on X](https://x.com/KastorsForest) and discover
 This project is open-source and licensed under the MIT License.
 
 ## External dependencies
-This software uses the public Kasplex APIs to retrieve the KRC20 transactions data. It has no other external dependency or requirement.
+This software uses the public Kasplex APIs to retrieve the KRC20 transactions data. It does not rely on any other external data source.
 
 ## Use
 ### Prerequisites
-- **python 3**; testing has been performed with version **3.13.1**
+- **python > 3.11**; testing has been performed with version **3.13.1**
 - **git**, if the dedicated command will be used to clone the repo (see below)
 
 ### Creation of a virtual environment

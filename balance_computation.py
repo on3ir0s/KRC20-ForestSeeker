@@ -22,6 +22,33 @@ import asyncio
 import csv
 from disk_io import write_holders_to_csv
 
+# Fetch current balance for an address from API
+async def fetch_address_balance(address, tick):
+    async with aiohttp.ClientSession() as session:
+        current_balance_url = f"https://api.kasplex.org/v1/krc20/address/{address}/token/{tick}"
+        retries = 5
+        while True:
+                for attempt in range(retries):
+                    try:
+                        async with asyncio.timeout(12):
+                            try:
+                                async with session.get(current_balance_url) as response:
+                                    data = await response.json()
+                                    balance_info = data.get("result", [{}])[0]   
+                                if response.status != 200:
+                                    raise Exception(f"API error with status code {response.status}")
+                                return address, balance_info.get("balance", "0") 
+                            except Exception as e:
+                                print(f"Error: {e}. Retrying... ({attempt + 1}/{retries})")
+                                await asyncio.sleep(10)
+                                continue
+                    except asyncio.TimeoutError:
+                        print(f"Error: Request timeout. Retrying... ({attempt + 1}/{retries})")
+                        await asyncio.sleep(10)
+                else:   
+                    # IF API errors continue, return -1 as balance
+                    return address, -1
+
 # Function to calculate token balance from transaction file
 def calculate_balance(filename, address, tick):
     balance = 0
@@ -56,35 +83,14 @@ def calculate_balance(filename, address, tick):
                     transferred += float(txn["amt_int"])                    
     balance = minted + transferred - listed
     
-    # Fetch current balance from API
-    current_balance_url = f"https://api.kasplex.org/v1/krc20/address/{address}/token/{tick}"
-    async def fetch_current_balance():
-        async with aiohttp.ClientSession() as session:
-            async with session.get(current_balance_url) as response:
-                data = await response.json()
-                balance_info = data.get("result", [{}])[0]
-                return balance_info.get("balance", "0")
+    results = asyncio.run(fetch_address_balance(address, tick))
+    current_balance_int = int(results[1]) / 100000000
 
-    try:
-        current_balance_int = int(asyncio.run(fetch_current_balance()))                
-    except (ValueError, TypeError):
-        current_balance_int = 0 
-
-    current_balance_int = current_balance_int / 100000000   
-
-    # Create JSON object
-    balance_info = {
-        address: {
-            tick: {
-                "balance": balance,
-                "minted": minted,
-                "listed": listed,                
-                "transferred": transferred,
-                "current_balance": current_balance_int
-            }
-        }
-    }
-    return balance_info
+    print(f"\nMinted: {minted}")
+    print(f"Transferred: {transferred}")
+    print(f"Listed: {transferred}")
+    print(f"Current balance from transactions: {balance}")
+    print(f"Current balance from API: {current_balance_int}\n")
 
 # Function to process snapshot based on mode ('end' or 'opscore')
 def process_holders_snapshot(filename, tick, mode, opscore=None):
@@ -126,23 +132,16 @@ def process_holders_snapshot(filename, tick, mode, opscore=None):
     print(f"\n\nTotal unique wallets: {unique_addresses}")
 
     async def fetch_balances(addresses):
-        async with aiohttp.ClientSession() as session:
-            async def fetch_balance(address):
-                current_balance_url = f"https://api.kasplex.org/v1/krc20/address/{address}/token/{tick}"
-                async with session.get(current_balance_url) as response:
-                    data = await response.json()
-                    balance_info = data.get("result", [{}])[0]
-                    return address, balance_info.get("balance", "0")
-
             tasks = []
             for address in addresses:
-                tasks.append(fetch_balance(address))
+                tasks.append(fetch_address_balance(address, tick))
             results = await asyncio.gather(*tasks)
             return results
 
     address_list = list(holders.keys())
     processed_addresses = 0
-    batch_size = 100
+    API_errors = 0
+    batch_size = 200
     for i in range(0, unique_addresses, batch_size):
         batch_addresses = address_list[i:i + batch_size]
         results = asyncio.run(fetch_balances(batch_addresses))
@@ -150,16 +149,24 @@ def process_holders_snapshot(filename, tick, mode, opscore=None):
             processed_addresses += 1
             print(f"\rProcessing wallet balance: {processed_addresses} / {unique_addresses}", end="")
             holders[address]["balance"] = holders[address]["minted"] + holders[address]["transferred"] - holders[address]["listed"]
+            if api_balance == -1:
+                API_errors += 1
             try:
                 holders[address]["api_balance"] = int(api_balance) / 100000000
                 holders[address]["delta"] = holders[address]["api_balance"] - holders[address]["balance"] # final - snapshot
-            except (ValueError, TypeError):
-                holders[address]["api_balance"] = 0
+            except Exception as e:
+                print(f"\nError: {e}. Returning to main menu.)")
+                continue
 
     wallets_with_balance_gt_zero = sum(1 for holder in holders.values() if holder["balance"] > 0)
+    if API_errors > 0:
+        print(f"\n\nWarning! {API_errors} error(s) found retrieving the current balance from the Kasplex API")
     print(f"\nTotal unique wallets with balance greater than 0: {wallets_with_balance_gt_zero}")
 
     if mode == "end":
         write_holders_to_csv(f"snapshot_{tick}_full.csv", holders)
+        print(f"\nFile snapshot_{tick}_full.csv successfully witten to the 'files_io' folder")                
     elif mode == "opscore":
         write_holders_to_csv(f"snapshot_{tick}_opscore_{opscore}.csv", holders)
+        print(f"\nFile snapshot_{tick}_opscore_{opscore}.csv successfully witten to the 'files_io' folder")
+        
