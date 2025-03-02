@@ -70,7 +70,7 @@ def write_to_csv(filename, transactions, tick, append=False):
 # Function to write holders to CSV
 def write_holders_to_csv(filename, holders):
     filename = sanitize_filename(filename)
-    fieldnames = ["address", "minted", "transferred", "listed", "balance", "api_balance", "delta"]
+    fieldnames = ["address", "minted", "transferred", "calc_balance", "api_balance", "api_locked", "delta"]
     with open(filename, 'w', newline='') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
@@ -79,9 +79,10 @@ def write_holders_to_csv(filename, holders):
                 "address": address,
                 "minted": data["minted"],
                 "transferred": data["transferred"],
-                "listed": data["listed"],                
-                "balance": data["balance"],
+                # "listed": data["listed"],                
+                "calc_balance": data["balance"],
                 "api_balance": data["api_balance"],
+                "api_locked": data["api_locked"],
                 "delta": data["delta"]
             }
             writer.writerow(row)
