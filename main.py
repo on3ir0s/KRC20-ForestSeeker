@@ -32,8 +32,8 @@ def main():
     while True:
         try:
             print("KRC20 Forest Seeker")
-            print("v0.1 - (c) 2025 on3ir0s\n")
-            print("\nA. TRANSACTIONS RETRIEVAL")
+            print("v0.2 - (c) 2025 on3ir0s\n")
+            print("A. TRANSACTIONS RETRIEVAL")
             print("SINGLE TICKER")
             print("1) Retrieve transactions file for a wallet and a KRC20 ticker")
             print("2) Retrieve multiple transactions files for a batch of wallets and a KRC20 ticker")
@@ -88,8 +88,9 @@ def main():
                 tick = filename.split('_')[1].lower()
                 while not (4 <= len(tick) <= 6):
                     tick = input("Enter ticker: ").lower()
-                addr_token = filename.split('_')[-1].split('.')[0]
-                address = f"kaspa:{addr_token}".lower()
+                substrings = filename.split('.')[0].split('_')
+                addr_token = [substring for substring in substrings if len(substring) >= 60]
+                address = "kaspa:"+addr_token[0]
                 calculate_balance(filename, address, tick)
                 input("Press ENTER to continue.\n")
             
@@ -109,7 +110,7 @@ def main():
                 opscore = -1
                 while opscore <= 0:                 
                     try:
-                        opscore = int(input("Enter the opscore: "))
+                        opscore = int(input("Enter the opscore (accounted transactions: < opscore): "))
                     except ValueError:
                         pass
                 process_holders_snapshot(filename, tick, opscore=opscore, mode="opscore")
@@ -123,3 +124,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
